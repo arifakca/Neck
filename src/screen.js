@@ -202,7 +202,9 @@ export class LedScreen {
     }
 
     // Pass 1: draw all dots into the offscreen layer at their brightness +
-    // (optional) blended whitewater color.
+    // (optional) blended whitewater color. Coordinates are rounded so
+    // canvas2d draws crisp pixels — sub-pixel edges become noisy gradients
+    // once they go through mipmap minification at oblique view angles.
     if (!useWhite) dotsCtx.fillStyle = this.dotColor;
     for (let j = 0; j < N; j++) {
       const ny = ((j + 0.5) / N) * 2 - 1;
@@ -225,7 +227,10 @@ export class LedScreen {
           const t = Math.min(1, cellSpeed[idx] * invSpeedRef);
           dotsCtx.globalAlpha = minBrightness + (1 - minBrightness) * t;
         }
-        dotsCtx.fillRect(i * cellPx + dotOffset, cellTopY + dotOffset, dotSize, dotSize);
+        const x = Math.round(i * cellPx + dotOffset);
+        const y = Math.round(cellTopY + dotOffset);
+        const w = Math.max(1, Math.round(dotSize));
+        dotsCtx.fillRect(x, y, w, w);
       }
     }
     if (useSpeed) dotsCtx.globalAlpha = 1;

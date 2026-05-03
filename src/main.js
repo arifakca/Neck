@@ -20,14 +20,8 @@ const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 50);
 camera.position.set(0, 1.0, 4.6);
 camera.lookAt(0, 0, 0);
 
-const hemi = new THREE.HemisphereLight(0xfff1d6, 0x1a1c22, 0.55);
+const hemi = new THREE.HemisphereLight(0xfff3dc, 0x202028, 1.05);
 scene.add(hemi);
-const key = new THREE.DirectionalLight(0xfff0d0, 1.4);
-key.position.set(2.5, 4, 3);
-scene.add(key);
-const rim = new THREE.DirectionalLight(0x88aaff, 0.5);
-rim.position.set(-3, 1.5, -2);
-scene.add(rim);
 
 // Soft contact shadow under the floating disc.
 const shadowTex = makeRadialShadowTexture();
@@ -42,7 +36,7 @@ shadow.position.y = -1.35;
 scene.add(shadow);
 
 // LED screen + fluid sim.
-const led = new LedScreen({ size: 512 });
+const led = new LedScreen({ size: 1024 });
 led.texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 const fluid = new Fluid({ count: 600, radius: 0.032 });
 
