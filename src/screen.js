@@ -62,8 +62,13 @@ export class LedScreen {
     this.whitewater = false;
     this.whitewaterAmount = 1.0;
     this.whitewaterColor = '#ffffff';
-    this.whitewaterSpeedRef = 2.0;     // speed that fully whitens
-    this.whitewaterIsolationRef = 4;   // < this many neighbors → fully isolated
+    // Speed at which a particle is fully white from motion alone. Lower =
+    // more reactive to sloshing.
+    this.whitewaterSpeedRef = 1.0;
+    // Particles with fewer than this many neighbors in their 3x3 grid
+    // neighborhood get extra whiteness from isolation. With ~600 particles
+    // most interior particles have 6-8 neighbors, surface/droplets fewer.
+    this.whitewaterIsolationRef = 8;
   }
 
   setGlow(enabled) { this.glow = !!enabled; }
@@ -189,7 +194,10 @@ export class LedScreen {
         if (!cells[idx]) continue;
         if (useWhite) {
           const w = cellWhite[idx];
-          const lvl = w >= 1 ? PAL - 1 : (w * PAL) | 0;
+          // ceil() so any nonzero whiteness picks at least the first blended
+          // step in the palette (otherwise sub-1/PAL values quantize to 0
+          // and you'd see no foam until whiteness crossed ~6%).
+          const lvl = w <= 0 ? 0 : Math.min(PAL - 1, Math.ceil(w * (PAL - 1)));
           dotsCtx.fillStyle = palette[lvl];
         }
         if (useSpeed) {
