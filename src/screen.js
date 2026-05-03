@@ -62,6 +62,10 @@ export class LedScreen {
     this.whitewater = false;
     this.whitewaterAmount = 1.0;
     this.whitewaterColor = '#ffffff';
+    // Whiteness below this is suppressed entirely; above is rescaled to fill
+    // (threshold, 1] → (0, 1]. Lets the user filter out the long tail of
+    // mildly-foamy particles and only show the truly splashy/isolated ones.
+    this.whitewaterThreshold = 0;
     // Speed at which a particle is fully white from motion alone. Lower =
     // more reactive to sloshing.
     this.whitewaterSpeedRef = 1.0;
@@ -80,6 +84,7 @@ export class LedScreen {
   setWhitewater(enabled) { this.whitewater = !!enabled; }
   setWhitewaterAmount(v) { this.whitewaterAmount = Math.max(0, Math.min(1, v)); }
   setWhitewaterColor(c) { this.whitewaterColor = c; }
+  setWhitewaterThreshold(v) { this.whitewaterThreshold = Math.max(0, Math.min(0.99, v)); }
 
   setResolution(n) {
     this.resolution = Math.max(4, Math.min(160, n | 0));
@@ -119,6 +124,8 @@ export class LedScreen {
     const wsRef = 1 / Math.max(0.001, this.whitewaterSpeedRef);
     const wnRef = 1 / Math.max(0.001, this.whitewaterIsolationRef);
     const wAmt = this.whitewaterAmount;
+    const wThresh = this.whitewaterThreshold;
+    const wInvSpan = 1 / Math.max(0.001, 1 - wThresh);
     for (let p = 0; p < count; p++) {
       const fx = (px[p] + 1) * 0.5 * N;
       const fy = (py[p] + 1) * 0.5 * N;
@@ -136,7 +143,10 @@ export class LedScreen {
         const dist = Math.sqrt(px[p] * px[p] + py[p] * py[p]);
         const boundaryFade = Math.min(1, Math.max(0, (1 - dist) / 0.22));
         const isoPart = Math.max(0, 1 - nb * wnRef) * boundaryFade;
-        whiteness = Math.min(1, speedPart + isoPart) * wAmt;
+        const wRaw = Math.min(1, speedPart + isoPart);
+        // Threshold filter: drop anything below cutoff, rescale the rest.
+        const wFiltered = wRaw > wThresh ? (wRaw - wThresh) * wInvSpan : 0;
+        whiteness = wFiltered * wAmt;
       }
       const i0 = Math.max(0, Math.floor(fx - rCells));
       const i1 = Math.min(N - 1, Math.floor(fx + rCells));
