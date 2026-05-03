@@ -81,7 +81,9 @@ export class LedScreen {
     // Rainbow mode: each cell gets a hue from its angle around the disc
     // center; the whole rainbow rotates over time. Overrides dotColor.
     this.rainbow = false;
-    this.rainbowSpeed = 0.07; // hue cycles per second
+    this.rainbowSpeed = 0.25; // hue cycles per second (≈ 1 turn / 4 s)
+    this.rainbowSat = 1.0;
+    this.rainbowLight = 0.6;
 
     this.whitewater = false;
     this.whitewaterAmount = 1.0;
@@ -224,7 +226,7 @@ export class LedScreen {
       const baseRgb = new Array(PAL_HUE);
       for (let h = 0; h < PAL_HUE; h++) {
         const hue = ((h / PAL_HUE) + hueOffset) % 1;
-        const c = hslToRgb(hue, 0.85, 0.55);
+        const c = hslToRgb(hue, this.rainbowSat, this.rainbowLight);
         baseRgb[h] = c;
       }
       if (useWhite) {
