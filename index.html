@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>LED Fluid Disc</title>
+  <link rel="stylesheet" href="./style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <div class="panel">
+    <div class="hint">Drag to rotate</div>
+    <label class="row">
+      <span class="label">Resolution</span>
+      <input id="resolution" type="range" min="12" max="80" step="1" value="28" />
+      <span id="resolution-value" class="value">28</span>
+    </label>
+    <label class="row">
+      <span class="label">Liquid</span>
+      <input id="amount" type="range" min="100" max="1000" step="50" value="600" />
+      <span id="amount-value" class="value">600</span>
+    </label>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

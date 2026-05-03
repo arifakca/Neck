@@ -1,0 +1,54 @@
+import * as THREE from 'three';
+
+// Builds the gold disc with the LED screen on its top face.
+// Returns a Group whose quaternion can be rotated freely; the LED screen
+// uvs are arranged so the texture's local axes align with:
+//   texture u (canvas x, left→right)   = disc local +X
+//   texture v (canvas y, bottom→top)   = disc local -Z
+// Pass that mapping when computing 2D gravity for the fluid.
+export function buildDisc({ ledTexture, radius = 1.0, height = 0.18 } = {}) {
+  const group = new THREE.Group();
+
+  const goldMat = new THREE.MeshStandardMaterial({
+    color: 0xc9a25a,
+    metalness: 0.92,
+    roughness: 0.28,
+  });
+
+  // Body: gold side + gold top cap (the screen will sit on top of the cap,
+  // leaving a thin gold ring visible at the rim). Bottom cap stays gold too.
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius, radius, height, 96, 1, false),
+    goldMat,
+  );
+  group.add(body);
+
+  // The LED screen plane sits just above the cap; smaller than the cap so a
+  // thin gold rim shows around it.
+  const screen = new THREE.Mesh(
+    new THREE.CircleGeometry(radius * 0.93, 96),
+    new THREE.MeshBasicMaterial({ map: ledTexture, toneMapped: false }),
+  );
+  screen.rotation.x = -Math.PI / 2;
+  screen.position.y = height / 2 + 0.0008;
+  group.add(screen);
+
+  // Hanging loop: small torus + bail above the rim, decorative only.
+  const loopMat = goldMat.clone();
+  const bail = new THREE.Mesh(
+    new THREE.TorusGeometry(radius * 0.09, radius * 0.022, 16, 32),
+    loopMat,
+  );
+  bail.position.set(0, radius * 1.12, 0);
+  bail.rotation.x = Math.PI / 2;
+  group.add(bail);
+
+  const bailBase = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius * 0.07, radius * 0.09, radius * 0.07, 24),
+    loopMat,
+  );
+  bailBase.position.set(0, radius * 1.02, 0);
+  group.add(bailBase);
+
+  return group;
+}
