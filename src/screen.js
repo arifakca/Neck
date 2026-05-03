@@ -129,7 +129,13 @@ export class LedScreen {
       if (cellWhite) {
         const speedPart = Math.min(1, speed * wsRef);
         const nb = neighbors ? neighbors[p] : 0;
-        const isoPart = Math.max(0, 1 - nb * wnRef);
+        // Fade the isolation contribution near the disc boundary. Particles
+        // there have fewer neighbors only because the 3x3 cell window spills
+        // outside the wall, not because they're truly alone — without this
+        // the outer ring would always foam regardless of fluid state.
+        const dist = Math.sqrt(px[p] * px[p] + py[p] * py[p]);
+        const boundaryFade = Math.min(1, Math.max(0, (1 - dist) / 0.22));
+        const isoPart = Math.max(0, 1 - nb * wnRef) * boundaryFade;
         whiteness = Math.min(1, speedPart + isoPart) * wAmt;
       }
       const i0 = Math.max(0, Math.floor(fx - rCells));
