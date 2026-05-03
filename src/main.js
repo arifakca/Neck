@@ -76,6 +76,10 @@ const glowStrengthValue = $('glow-strength-value');
 const speedGlowInput = $('speed-glow');
 const speedRefInput = $('speed-ref');
 const speedRefValue = $('speed-ref-value');
+const whitewaterInput = $('whitewater');
+const whitewaterAmountInput = $('whitewater-amount');
+const whitewaterAmountValue = $('whitewater-amount-value');
+const whitewaterColorInput = $('whitewater-color');
 const gravityInput = $('gravity');
 const gravityValue = $('gravity-value');
 const viscosityInput = $('viscosity');
@@ -135,6 +139,17 @@ function syncSpeedRef() {
   speedRefValue.textContent = v.toFixed(1);
   led.setSpeedRef(v);
 }
+function syncWhitewater() {
+  led.setWhitewater(whitewaterInput.checked);
+}
+function syncWhitewaterAmount() {
+  const v = parseFloat(whitewaterAmountInput.value);
+  whitewaterAmountValue.textContent = v.toFixed(2);
+  led.setWhitewaterAmount(v);
+}
+function syncWhitewaterColor() {
+  led.setWhitewaterColor(whitewaterColorInput.value);
+}
 function syncGravity() {
   settings.gravity = parseFloat(gravityInput.value);
   gravityValue.textContent = settings.gravity.toFixed(1);
@@ -166,6 +181,9 @@ glowInput.addEventListener('change', syncGlow);
 glowStrengthInput.addEventListener('input', syncGlowStrength);
 speedGlowInput.addEventListener('change', syncGlow);
 speedRefInput.addEventListener('input', syncSpeedRef);
+whitewaterInput.addEventListener('change', syncWhitewater);
+whitewaterAmountInput.addEventListener('input', syncWhitewaterAmount);
+whitewaterColorInput.addEventListener('input', syncWhitewaterColor);
 gravityInput.addEventListener('input', syncGravity);
 viscosityInput.addEventListener('input', syncViscosity);
 bounceInput.addEventListener('input', syncBounce);
@@ -178,6 +196,9 @@ syncColors();
 syncGlow();
 syncGlowStrength();
 syncSpeedRef();
+syncWhitewater();
+syncWhitewaterAmount();
+syncWhitewaterColor();
 syncGravity();
 syncViscosity();
 syncBounce();

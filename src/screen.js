@@ -1,5 +1,17 @@
 import * as THREE from 'three';
 
+function hexToRgb(hex) {
+  if (hex.length === 4) {
+    // #abc → #aabbcc
+    hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+  }
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16),
+  };
+}
+
 // Renders a fluid's particles as a low-res LED grid masked to a circle,
 // onto a CanvasTexture suitable for mapping onto the disc's top face.
 //
@@ -44,6 +56,14 @@ export class LedScreen {
     // Speed (length of fluid velocity) that maps to full brightness when
     // speedGlow is on. Anything below renders dimmer.
     this.speedRef = 3.0;
+    // Whitewater / foam: blend the dot color toward whitewaterColor based on
+    // particle speed and isolation (low neighbor count). Per-cell whiteness
+    // takes the max over particles in that cell.
+    this.whitewater = false;
+    this.whitewaterAmount = 1.0;
+    this.whitewaterColor = '#ffffff';
+    this.whitewaterSpeedRef = 2.0;     // speed that fully whitens
+    this.whitewaterIsolationRef = 4;   // < this many neighbors → fully isolated
   }
 
   setGlow(enabled) { this.glow = !!enabled; }
@@ -52,6 +72,9 @@ export class LedScreen {
   setDotFill(v) { this.dotFill = Math.max(0.05, Math.min(1, v)); }
   setGlowStrength(v) { this.glowStrength = Math.max(0, v); }
   setSpeedRef(v) { this.speedRef = Math.max(0.05, v); }
+  setWhitewater(enabled) { this.whitewater = !!enabled; }
+  setWhitewaterAmount(v) { this.whitewaterAmount = Math.max(0, Math.min(1, v)); }
+  setWhitewaterColor(c) { this.whitewaterColor = c; }
 
   setResolution(n) {
     this.resolution = Math.max(4, Math.min(160, n | 0));
@@ -73,24 +96,37 @@ export class LedScreen {
     dotsCtx.clearRect(0, 0, size, size);
 
     // For each particle, mark the LED cells whose center sits within its
-    // (slightly inflated) radius. When speedGlow is on, each cell also tracks
-    // the max particle speed seen, used later as the cell's brightness.
-    // Indices: i = column along fluid.x, j = row along fluid.y.
+    // (slightly inflated) radius. When speedGlow is on, each cell tracks the
+    // max particle speed (for brightness modulation). When whitewater is on,
+    // each cell tracks the max "whiteness" (for color blending).
     const cells = new Uint8Array(N * N);
     const cellSpeed = this.speedGlow ? new Float32Array(N * N) : null;
+    const cellWhite = this.whitewater ? new Float32Array(N * N) : null;
+    const needSpeedValue = !!cellSpeed || !!cellWhite;
     const px = fluid.x;
     const py = fluid.y;
     const vx = fluid.vx;
     const vy = fluid.vy;
+    const neighbors = fluid.neighbors;
     const count = fluid.count;
     const rCells = (fluid.radius * this.particleFootprint) * 0.5 * N;
     const rCellsSq = rCells * rCells;
+    const wsRef = 1 / Math.max(0.001, this.whitewaterSpeedRef);
+    const wnRef = 1 / Math.max(0.001, this.whitewaterIsolationRef);
+    const wAmt = this.whitewaterAmount;
     for (let p = 0; p < count; p++) {
       const fx = (px[p] + 1) * 0.5 * N;
       const fy = (py[p] + 1) * 0.5 * N;
-      const speed = cellSpeed
+      const speed = needSpeedValue
         ? Math.sqrt(vx[p] * vx[p] + vy[p] * vy[p])
         : 0;
+      let whiteness = 0;
+      if (cellWhite) {
+        const speedPart = Math.min(1, speed * wsRef);
+        const nb = neighbors ? neighbors[p] : 0;
+        const isoPart = Math.max(0, 1 - nb * wnRef);
+        whiteness = Math.min(1, speedPart + isoPart) * wAmt;
+      }
       const i0 = Math.max(0, Math.floor(fx - rCells));
       const i1 = Math.min(N - 1, Math.floor(fx + rCells));
       const j0 = Math.max(0, Math.floor(fy - rCells));
@@ -102,10 +138,10 @@ export class LedScreen {
         for (let ii = i0; ii <= i1; ii++) {
           const dx = (ii + 0.5) - fx;
           if (dx * dx + dySq <= rCellsSq) {
-            cells[row + ii] = 1;
-            if (cellSpeed && speed > cellSpeed[row + ii]) {
-              cellSpeed[row + ii] = speed;
-            }
+            const idx = row + ii;
+            cells[idx] = 1;
+            if (cellSpeed && speed > cellSpeed[idx]) cellSpeed[idx] = speed;
+            if (cellWhite && whiteness > cellWhite[idx]) cellWhite[idx] = whiteness;
           }
         }
       }
@@ -118,12 +154,30 @@ export class LedScreen {
     const rMaskSq = 0.985 * 0.985;
 
     const useSpeed = !!cellSpeed;
+    const useWhite = !!cellWhite;
     const invSpeedRef = 1 / Math.max(0.001, this.speedRef);
     const minBrightness = 0.22;
 
-    // Pass 1: draw all dots into the offscreen layer at their (possibly
-    // speed-modulated) brightness. No glow yet.
-    dotsCtx.fillStyle = this.dotColor;
+    // For whitewater we precompute a small base→whitewaterColor palette, then
+    // pick a level per cell. Avoids per-cell color string composition.
+    let palette = null;
+    const PAL = 16;
+    if (useWhite) {
+      const base = hexToRgb(this.dotColor);
+      const white = hexToRgb(this.whitewaterColor);
+      palette = new Array(PAL);
+      for (let k = 0; k < PAL; k++) {
+        const t = k / (PAL - 1);
+        const r = (base.r + (white.r - base.r) * t) | 0;
+        const g = (base.g + (white.g - base.g) * t) | 0;
+        const b = (base.b + (white.b - base.b) * t) | 0;
+        palette[k] = `rgb(${r},${g},${b})`;
+      }
+    }
+
+    // Pass 1: draw all dots into the offscreen layer at their brightness +
+    // (optional) blended whitewater color.
+    if (!useWhite) dotsCtx.fillStyle = this.dotColor;
     for (let j = 0; j < N; j++) {
       const ny = ((j + 0.5) / N) * 2 - 1;
       const dySq = ny * ny;
@@ -133,6 +187,11 @@ export class LedScreen {
         if (nx * nx + dySq > rMaskSq) continue;
         const idx = j * N + i;
         if (!cells[idx]) continue;
+        if (useWhite) {
+          const w = cellWhite[idx];
+          const lvl = w >= 1 ? PAL - 1 : (w * PAL) | 0;
+          dotsCtx.fillStyle = palette[lvl];
+        }
         if (useSpeed) {
           const t = Math.min(1, cellSpeed[idx] * invSpeedRef);
           dotsCtx.globalAlpha = minBrightness + (1 - minBrightness) * t;

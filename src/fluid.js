@@ -26,6 +26,9 @@ export class Fluid {
     this.vy = new Float32Array(count);
     this.px = new Float32Array(count);
     this.py = new Float32Array(count);
+    // Per-particle neighbor count in a 3x3 grid-cell neighborhood, used by
+    // the renderer to detect isolated droplets (whitewater / foam).
+    this.neighbors = new Uint8Array(count);
     this._rebuildGrid();
   }
 
@@ -157,6 +160,37 @@ export class Fluid {
     }
   }
 
+  _countNeighborhood() {
+    // Counts particles in the 3x3 grid-cell neighborhood (excluding self).
+    // Cell size is 2*radius, so this covers roughly a 6r square per particle.
+    const dim = this.gridDim;
+    const inv = 1 / this.cellSize;
+    const out = this.neighbors;
+    out.fill(0);
+    for (let i = 0; i < this.count; i++) {
+      let cx = Math.floor((this.x[i] + 1) * inv);
+      let cy = Math.floor((this.y[i] + 1) * inv);
+      if (cx < 0) cx = 0; else if (cx >= dim) cx = dim - 1;
+      if (cy < 0) cy = 0; else if (cy >= dim) cy = dim - 1;
+      let count = 0;
+      for (let oy = -1; oy <= 1; oy++) {
+        const ny = cy + oy;
+        if (ny < 0 || ny >= dim) continue;
+        for (let ox = -1; ox <= 1; ox++) {
+          const nx = cx + ox;
+          if (nx < 0 || nx >= dim) continue;
+          let j = this.cellHead[ny * dim + nx];
+          while (j !== -1) {
+            count++;
+            j = this.cellNext[j];
+          }
+        }
+      }
+      // Subtract 1 for the particle itself.
+      out[i] = Math.min(255, Math.max(0, count - 1));
+    }
+  }
+
   _resolveBoundary() {
     const r = this.radius;
     const limit = 1 - r;
@@ -219,5 +253,8 @@ export class Fluid {
         this.y[i] = this.py[i];
       }
     }
+    // Final grid + neighbor count, exposed for rendering whitewater/foam.
+    this._bucketize();
+    this._countNeighborhood();
   }
 }
