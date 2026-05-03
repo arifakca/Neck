@@ -73,6 +73,7 @@ const particleRInput = $('particle-r');
 const particleRValue = $('particle-r-value');
 const liquidColorInput = $('liquid-color');
 const screenColorInput = $('screen-color');
+const rainbowInput = $('rainbow');
 const glowInput = $('glow');
 const glowStrengthInput = $('glow-strength');
 const glowStrengthValue = $('glow-strength-value');
@@ -129,6 +130,9 @@ function syncColors() {
     liquid: liquidColorInput.value,
     background: screenColorInput.value,
   });
+}
+function syncRainbow() {
+  led.setRainbow(rainbowInput.checked);
 }
 function syncGlow() {
   led.setGlow(glowInput.checked);
@@ -187,6 +191,7 @@ amtInput.addEventListener('input', syncAmount);
 particleRInput.addEventListener('input', syncParticleRadius);
 liquidColorInput.addEventListener('input', syncColors);
 screenColorInput.addEventListener('input', syncColors);
+rainbowInput.addEventListener('change', syncRainbow);
 glowInput.addEventListener('change', syncGlow);
 glowStrengthInput.addEventListener('input', syncGlowStrength);
 speedGlowInput.addEventListener('change', syncGlow);
@@ -204,6 +209,7 @@ syncResolution();
 syncFootprint();
 syncDotFill();
 syncColors();
+syncRainbow();
 syncGlow();
 syncGlowStrength();
 syncSpeedRef();

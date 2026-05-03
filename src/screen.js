@@ -12,6 +12,20 @@ function hexToRgb(hex) {
   };
 }
 
+// h, s, l in [0, 1]. Returns {r, g, b} in [0, 255].
+function hslToRgb(h, s, l) {
+  const a = s * Math.min(l, 1 - l);
+  function f(n) {
+    const k = (n + h * 12) % 12;
+    return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+  }
+  return {
+    r: (f(0) * 255) | 0,
+    g: (f(8) * 255) | 0,
+    b: (f(4) * 255) | 0,
+  };
+}
+
 // Renders a fluid's particles as a low-res LED grid masked to a circle,
 // onto a CanvasTexture suitable for mapping onto the disc's top face.
 //
@@ -64,6 +78,11 @@ export class LedScreen {
     // Whitewater / foam: blend the dot color toward whitewaterColor based on
     // particle speed and isolation (low neighbor count). Per-cell whiteness
     // takes the max over particles in that cell.
+    // Rainbow mode: each cell gets a hue from its angle around the disc
+    // center; the whole rainbow rotates over time. Overrides dotColor.
+    this.rainbow = false;
+    this.rainbowSpeed = 0.07; // hue cycles per second
+
     this.whitewater = false;
     this.whitewaterAmount = 1.0;
     this.whitewaterColor = '#ffffff';
@@ -86,6 +105,8 @@ export class LedScreen {
   setDotFill(v) { this.dotFill = Math.max(0.05, Math.min(1, v)); }
   setGlowStrength(v) { this.glowStrength = Math.max(0, v); }
   setSpeedRef(v) { this.speedRef = Math.max(0.05, v); }
+  setRainbow(enabled) { this.rainbow = !!enabled; }
+  setRainbowSpeed(v) { this.rainbowSpeed = v; }
   setWhitewater(enabled) { this.whitewater = !!enabled; }
   setWhitewaterAmount(v) { this.whitewaterAmount = Math.max(0, Math.min(1, v)); }
   setWhitewaterColor(c) { this.whitewaterColor = c; }
@@ -181,23 +202,61 @@ export class LedScreen {
 
     const useSpeed = !!cellSpeed;
     const useWhite = !!cellWhite;
+    const useRainbow = this.rainbow;
     const invSpeedRef = 1 / Math.max(0.001, this.speedRef);
     const minBrightness = 0.22;
 
-    // For whitewater we precompute a small base→whitewaterColor palette, then
-    // pick a level per cell. Avoids per-cell color string composition.
-    let palette = null;
+    // Precompute color palettes per frame. There are three modes:
+    //   plain  → single dotColor (set once, no palette)
+    //   foam   → 1D palette: base → whitewaterColor (16 levels)
+    //   rainbow→ 1D palette: hue ring (24 levels) shifted by time
+    //   both   → 2D palette: hue × foam (24×16)
+    // Lookups in the inner loop are O(1).
     const PAL = 16;
-    if (useWhite) {
+    const PAL_HUE = 24;
+    let foamPalette = null;
+    let rainbowPalette = null;
+    let rainbowFoamPalette = null;
+    const tNow = performance.now() * 0.001;
+    const hueOffset = (tNow * this.rainbowSpeed) % 1;
+
+    if (useRainbow) {
+      const baseRgb = new Array(PAL_HUE);
+      for (let h = 0; h < PAL_HUE; h++) {
+        const hue = ((h / PAL_HUE) + hueOffset) % 1;
+        const c = hslToRgb(hue, 0.85, 0.55);
+        baseRgb[h] = c;
+      }
+      if (useWhite) {
+        const white = hexToRgb(this.whitewaterColor);
+        rainbowFoamPalette = new Array(PAL_HUE * PAL);
+        for (let h = 0; h < PAL_HUE; h++) {
+          const c = baseRgb[h];
+          for (let k = 0; k < PAL; k++) {
+            const t = k / (PAL - 1);
+            const r = (c.r + (white.r - c.r) * t) | 0;
+            const g = (c.g + (white.g - c.g) * t) | 0;
+            const b = (c.b + (white.b - c.b) * t) | 0;
+            rainbowFoamPalette[h * PAL + k] = `rgb(${r},${g},${b})`;
+          }
+        }
+      } else {
+        rainbowPalette = new Array(PAL_HUE);
+        for (let h = 0; h < PAL_HUE; h++) {
+          const c = baseRgb[h];
+          rainbowPalette[h] = `rgb(${c.r},${c.g},${c.b})`;
+        }
+      }
+    } else if (useWhite) {
       const base = hexToRgb(this.dotColor);
       const white = hexToRgb(this.whitewaterColor);
-      palette = new Array(PAL);
+      foamPalette = new Array(PAL);
       for (let k = 0; k < PAL; k++) {
         const t = k / (PAL - 1);
         const r = (base.r + (white.r - base.r) * t) | 0;
         const g = (base.g + (white.g - base.g) * t) | 0;
         const b = (base.b + (white.b - base.b) * t) | 0;
-        palette[k] = `rgb(${r},${g},${b})`;
+        foamPalette[k] = `rgb(${r},${g},${b})`;
       }
     }
 
@@ -205,7 +264,8 @@ export class LedScreen {
     // (optional) blended whitewater color. Coordinates are rounded so
     // canvas2d draws crisp pixels — sub-pixel edges become noisy gradients
     // once they go through mipmap minification at oblique view angles.
-    if (!useWhite) dotsCtx.fillStyle = this.dotColor;
+    if (!useWhite && !useRainbow) dotsCtx.fillStyle = this.dotColor;
+    const TWO_PI = Math.PI * 2;
     for (let j = 0; j < N; j++) {
       const ny = ((j + 0.5) / N) * 2 - 1;
       const dySq = ny * ny;
@@ -215,14 +275,28 @@ export class LedScreen {
         if (nx * nx + dySq > rMaskSq) continue;
         const idx = j * N + i;
         if (!cells[idx]) continue;
-        if (useWhite) {
+
+        if (useRainbow) {
+          // Hue based on the cell's angle around the disc center.
+          let a = Math.atan2(ny, nx) / TWO_PI + 0.5; // 0..1
+          if (a >= 1) a -= 1;
+          const hIdx = (a * PAL_HUE) | 0;
+          if (useWhite) {
+            const w = cellWhite[idx];
+            const lvl = w <= 0 ? 0 : Math.min(PAL - 1, Math.ceil(w * (PAL - 1)));
+            dotsCtx.fillStyle = rainbowFoamPalette[hIdx * PAL + lvl];
+          } else {
+            dotsCtx.fillStyle = rainbowPalette[hIdx];
+          }
+        } else if (useWhite) {
           const w = cellWhite[idx];
           // ceil() so any nonzero whiteness picks at least the first blended
           // step in the palette (otherwise sub-1/PAL values quantize to 0
           // and you'd see no foam until whiteness crossed ~6%).
           const lvl = w <= 0 ? 0 : Math.min(PAL - 1, Math.ceil(w * (PAL - 1)));
-          dotsCtx.fillStyle = palette[lvl];
+          dotsCtx.fillStyle = foamPalette[lvl];
         }
+
         if (useSpeed) {
           const t = Math.min(1, cellSpeed[idx] * invSpeedRef);
           dotsCtx.globalAlpha = minBrightness + (1 - minBrightness) * t;
