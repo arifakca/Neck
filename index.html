@@ -16,6 +16,9 @@
 <body>
   <canvas id="scene"></canvas>
 
+  <audio id="bg-music" src="./src/Velvet%20Gallery%20Drift.mp3" loop preload="auto"></audio>
+  <button class="mute-toggle" id="mute-toggle" type="button" aria-label="Mute background music">SOUND ON</button>
+
   <div class="spin-rail" id="spin-rail">
     <input id="spin-slider" type="range" min="0" max="360" step="1" value="0" aria-label="Rotate disc 0 to 360 degrees" />
   </div>

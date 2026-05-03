@@ -251,3 +251,23 @@ input[type="color"]::-moz-color-swatch { border: none; border-radius: 4px; }
   margin: 0;
   background: rgba(255, 255, 255, 0.18);
 }
+
+.mute-toggle {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 6;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(20, 20, 26, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #e8d8a8;
+  font: 600 10px / 1 inherit;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.mute-toggle:active { background: rgba(232, 216, 168, 0.18); }
+.mute-toggle.muted { color: rgba(232, 216, 168, 0.5); }

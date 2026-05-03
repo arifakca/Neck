@@ -297,6 +297,53 @@ const deg2rad = Math.PI / 180;
   });
 })();
 
+// Background music. Browsers block autoplay with sound until the page has
+// received a user gesture, so we attempt play immediately and, on rejection,
+// retry on the first click/touch/keydown anywhere.
+(function wireBackgroundMusic() {
+  const audio = $('bg-music');
+  const btn = $('mute-toggle');
+  audio.volume = 0.45;
+
+  function refreshLabel() {
+    const muted = audio.muted || audio.paused;
+    btn.textContent = muted ? 'SOUND OFF' : 'SOUND ON';
+    btn.classList.toggle('muted', muted);
+  }
+
+  function tryPlay() { audio.play().then(refreshLabel).catch(refreshLabel); }
+  tryPlay();
+
+  let armed = true;
+  function onFirstGesture() {
+    if (!armed) return;
+    armed = false;
+    audio.muted = false;
+    tryPlay();
+    window.removeEventListener('pointerdown', onFirstGesture, true);
+    window.removeEventListener('touchstart', onFirstGesture, true);
+    window.removeEventListener('keydown', onFirstGesture, true);
+  }
+  window.addEventListener('pointerdown', onFirstGesture, true);
+  window.addEventListener('touchstart', onFirstGesture, true);
+  window.addEventListener('keydown', onFirstGesture, true);
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (audio.paused) {
+      audio.muted = false;
+      tryPlay();
+    } else {
+      audio.muted = !audio.muted;
+      refreshLabel();
+    }
+  });
+
+  audio.addEventListener('play', refreshLabel);
+  audio.addEventListener('pause', refreshLabel);
+  refreshLabel();
+})();
+
 // Minimize / expand the parameter panel.
 (function wirePanelToggle() {
   const panel = $('panel');
