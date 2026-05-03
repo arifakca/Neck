@@ -24,14 +24,20 @@ export function buildDisc({ ledTexture, radius = 1.0, height = 0.18 } = {}) {
   group.add(body);
 
   // The LED screen plane sits just above the cap; smaller than the cap so a
-  // thin gold rim shows around it.
-  const screen = new THREE.Mesh(
-    new THREE.CircleGeometry(radius * 0.93, 96),
-    new THREE.MeshBasicMaterial({ map: ledTexture, toneMapped: false }),
-  );
-  screen.rotation.x = -Math.PI / 2;
-  screen.position.y = height / 2 + 0.0008;
-  group.add(screen);
+  // thin gold rim shows around it. A second mesh on the underside shows the
+  // same fluid sim from the back (mirrored, as you'd see looking through).
+  const screenMat = new THREE.MeshBasicMaterial({ map: ledTexture, toneMapped: false });
+  const screenGeom = new THREE.CircleGeometry(radius * 0.93, 96);
+
+  const topScreen = new THREE.Mesh(screenGeom, screenMat);
+  topScreen.rotation.x = -Math.PI / 2;
+  topScreen.position.y = height / 2 + 0.0008;
+  group.add(topScreen);
+
+  const bottomScreen = new THREE.Mesh(screenGeom, screenMat);
+  bottomScreen.rotation.x = Math.PI / 2;
+  bottomScreen.position.y = -height / 2 - 0.0008;
+  group.add(bottomScreen);
 
   // Hanging loop: small torus + bail above the rim, decorative only.
   const loopMat = goldMat.clone();
