@@ -98,11 +98,20 @@ function onResize() {
 window.addEventListener('resize', onResize);
 onResize();
 
-// Per-frame: derive 2D gravity from disc orientation, step sim, redraw.
+// Per-frame: derive 2D gravity + spin from disc orientation, step sim, redraw.
 const G = 8.0;
 const worldDown = new THREE.Vector3(0, -1, 0);
 const localDown = new THREE.Vector3();
 const invQ = new THREE.Quaternion();
+
+// Angular velocity tracking: dq = qNew * qPrev^-1 in world space.
+// For small angles dq ≈ (1, ω·dt/2), so ω = 2·dq.xyz / dt.
+const prevQuat = new THREE.Quaternion().copy(disc.quaternion);
+const prevInv = new THREE.Quaternion();
+const dQuat = new THREE.Quaternion();
+const omegaWorld = new THREE.Vector3();
+const omegaLocal = new THREE.Vector3();
+let smoothedOmegaY = 0;
 
 let last = performance.now();
 function frame(now) {
@@ -118,6 +127,19 @@ function frame(now) {
   //   fluid.x  ←  local +X
   //   fluid.y  ←  local -Z   (see cylinder.js for the uv axis derivation)
   fluid.setGravity(localDown.x * G, -localDown.z * G);
+
+  // Angular velocity around the screen normal (disc local +Y).
+  prevInv.copy(prevQuat).invert();
+  dQuat.copy(disc.quaternion).multiply(prevInv);
+  if (dt > 1e-6) {
+    omegaWorld.set(dQuat.x, dQuat.y, dQuat.z).multiplyScalar(2 / dt);
+    omegaLocal.copy(omegaWorld).applyQuaternion(invQ);
+    // The fluid 2D frame's "z" axis = disc local +Y, so the in-plane spin
+    // rate is omegaLocal.y. Smooth a bit to avoid frame-to-frame jitter.
+    smoothedOmegaY = smoothedOmegaY * 0.6 + omegaLocal.y * 0.4;
+    fluid.setSpin(smoothedOmegaY);
+  }
+  prevQuat.copy(disc.quaternion);
 
   fluid.step(dt);
   led.render(fluid);

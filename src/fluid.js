@@ -6,6 +6,10 @@ export class Fluid {
     this.radius = radius;
     this.gx = 0;
     this.gy = 0;
+    // Angular velocity around the screen normal, in rad/s. Drives centrifugal
+    // and Coriolis pseudo-forces so the fluid lags behind / flings outward as
+    // the disc spins.
+    this.omega = 0;
     this.damping = 0.992;
     this.restitution = 0.55;
     this.subSteps = 2;
@@ -52,6 +56,13 @@ export class Fluid {
   setGravity(gx, gy) {
     this.gx = gx;
     this.gy = gy;
+  }
+
+  setSpin(omega) {
+    // Clamp to keep centrifugal force from blowing up under fast flicks.
+    if (omega > 10) omega = 10;
+    else if (omega < -10) omega = -10;
+    this.omega = omega;
   }
 
   setCount(n) {
@@ -155,13 +166,24 @@ export class Fluid {
   step(dt) {
     const sub = this.subSteps;
     const h = dt / sub;
+    const omega = this.omega;
+    const omega2 = omega * omega;
     for (let s = 0; s < sub; s++) {
-      // Apply gravity + damping, predict positions.
+      // Apply gravity + centrifugal + Coriolis + damping, then predict.
+      // Pseudo-forces in the rotating disc frame:
+      //   centrifugal:  +ω² · r        (outward)
+      //   Coriolis:     +2ω · (vy, -vx)
       for (let i = 0; i < this.count; i++) {
-        this.vx[i] = (this.vx[i] + this.gx * h) * this.damping;
-        this.vy[i] = (this.vy[i] + this.gy * h) * this.damping;
-        this.px[i] = this.x[i] + this.vx[i] * h;
-        this.py[i] = this.y[i] + this.vy[i] * h;
+        const xi = this.x[i];
+        const yi = this.y[i];
+        const vxOld = this.vx[i];
+        const vyOld = this.vy[i];
+        const ax = this.gx + omega2 * xi + 2 * omega * vyOld;
+        const ay = this.gy + omega2 * yi - 2 * omega * vxOld;
+        this.vx[i] = (vxOld + ax * h) * this.damping;
+        this.vy[i] = (vyOld + ay * h) * this.damping;
+        this.px[i] = xi + this.vx[i] * h;
+        this.py[i] = yi + this.vy[i] * h;
       }
       // Iteratively resolve collisions and the boundary.
       for (let k = 0; k < this.relaxIters; k++) {

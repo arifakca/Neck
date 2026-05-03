@@ -25,16 +25,22 @@ export function buildDisc({ ledTexture, radius = 1.0, height = 0.18 } = {}) {
 
   // The LED screen plane sits just above the cap; smaller than the cap so a
   // thin gold rim shows around it. A second mesh on the underside shows the
-  // same fluid sim from the back (mirrored, as you'd see looking through).
+  // SAME fluid in the same world position — we flip the bottom face's V uvs
+  // so a particle at fluid (fx, fy) lands at the same world (x, z) on either
+  // face, instead of the natural mirror image.
   const screenMat = new THREE.MeshBasicMaterial({ map: ledTexture, toneMapped: false });
-  const screenGeom = new THREE.CircleGeometry(radius * 0.93, 96);
+  const topGeom = new THREE.CircleGeometry(radius * 0.93, 96);
+  const bottomGeom = topGeom.clone();
+  const uv = bottomGeom.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i));
+  uv.needsUpdate = true;
 
-  const topScreen = new THREE.Mesh(screenGeom, screenMat);
+  const topScreen = new THREE.Mesh(topGeom, screenMat);
   topScreen.rotation.x = -Math.PI / 2;
   topScreen.position.y = height / 2 + 0.0008;
   group.add(topScreen);
 
-  const bottomScreen = new THREE.Mesh(screenGeom, screenMat);
+  const bottomScreen = new THREE.Mesh(bottomGeom, screenMat);
   bottomScreen.rotation.x = Math.PI / 2;
   bottomScreen.position.y = -height / 2 - 0.0008;
   group.add(bottomScreen);
