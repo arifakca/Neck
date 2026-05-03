@@ -35,10 +35,15 @@ export class LedScreen {
     this.dotsCtx = this.dotsCanvas.getContext('2d');
 
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.NearestFilter;
+    // Mag filter stays Nearest so dots look crisp when the disc faces the
+    // camera. Min filter uses mipmaps + anisotropy so we don't get
+    // radiating moiré rays at steep grazing angles. Mipmaps are
+    // regenerated automatically each time needsUpdate flips true.
+    this.texture.minFilter = THREE.LinearMipmapLinearFilter;
     this.texture.magFilter = THREE.NearestFilter;
+    this.texture.generateMipmaps = true;
     this.texture.colorSpace = THREE.SRGBColorSpace;
-    this.texture.anisotropy = 1;
+    this.texture.anisotropy = 1; // bumped from main.js after renderer exists
 
     this.resolution = 28;
     this.bgColor = '#0a0a0a';

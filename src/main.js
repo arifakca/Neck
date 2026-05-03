@@ -43,6 +43,7 @@ scene.add(shadow);
 
 // LED screen + fluid sim.
 const led = new LedScreen({ size: 512 });
+led.texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 const fluid = new Fluid({ count: 600, radius: 0.032 });
 
 // Disc.
