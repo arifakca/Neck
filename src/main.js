@@ -46,8 +46,14 @@ const disc = buildDisc({ ledTexture: led.texture, radius: 1.0, height: 0.18 });
 disc.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0.35);
 scene.add(disc);
 
+// Drag and gyro write to baseTarget.quaternion. Each frame, we compose:
+//   disc.quaternion = baseTarget.quaternion * R(0,1,0, manualSpinAngle)
+// so the slider's angle stacks on top of whatever drag/gyro produced.
+const baseTarget = { quaternion: new THREE.Quaternion().copy(disc.quaternion) };
+let manualSpinAngle = 0;
+
 let gyroEnabled = false;
-const controls = attachDragRotate(canvas, disc, camera, {
+const controls = attachDragRotate(canvas, baseTarget, camera, {
   sensitivity: 0.008,
   inertiaDecay: 0.94,
   isEnabled: () => !gyroEnabled,
@@ -213,30 +219,20 @@ syncSpin();
 syncParticleRadius();
 syncAmount();
 
-// Vertical spin throttle on the right edge. Slider value (-1..1) maps to a
-// rotation rate around the disc's current local +Y axis (the screen normal).
-// Composes on top of drag and gyro since it's applied each frame.
-const SPIN_MAX_RATE = Math.PI; // rad/s at full throttle
-let manualSpinRate = 0;
-const spinAxis = new THREE.Vector3();
-const spinDeltaQ = new THREE.Quaternion();
+// Vertical slider on the right edge. Slider value (0..360 degrees) sets an
+// absolute rotation around the disc's local +Y axis (its screen normal).
+// Negated so a higher slider position reads as clockwise when viewed from
+// above. Composed on top of baseTarget each frame, so it persists across
+// drag/gyro updates instead of being overwritten.
+const deg2rad = Math.PI / 180;
 (function wireSpinSlider() {
   const slider = $('spin-slider');
   function update() {
-    // Negative because positive slider (up after rotate(-90deg)) should
-    // read as clockwise looking down at the disc, which is -ω around +Y.
-    manualSpinRate = -parseFloat(slider.value) * SPIN_MAX_RATE;
+    manualSpinAngle = -parseFloat(slider.value) * deg2rad;
   }
   slider.addEventListener('input', update);
   update();
 })();
-
-function applyManualSpin(dt) {
-  if (!manualSpinRate) return;
-  spinAxis.set(0, 1, 0).applyQuaternion(disc.quaternion);
-  spinDeltaQ.setFromAxisAngle(spinAxis, manualSpinRate * dt);
-  disc.quaternion.premultiply(spinDeltaQ);
-}
 
 // Phone gyroscope → disc orientation. iOS 13+ requires explicit permission
 // granted from a user gesture, so we ask on the toggle's `change` event.
@@ -257,7 +253,7 @@ function applyManualSpin(dt) {
     gyroEuler.set(beta, 0, -gamma, 'XYZ');
     gyroTarget.setFromEuler(gyroEuler);
     // Soft slerp to smooth out gyro noise.
-    disc.quaternion.slerp(gyroTarget, 0.18);
+    baseTarget.quaternion.slerp(gyroTarget, 0.18);
   }
 
   function attach() {
@@ -395,6 +391,10 @@ const prevInv = new THREE.Quaternion();
 const dQuat = new THREE.Quaternion();
 const omegaWorld = new THREE.Vector3();
 const omegaLocal = new THREE.Vector3();
+
+// Reused for slider→disc composition each frame.
+const MANUAL_SPIN_AXIS = new THREE.Vector3(0, 1, 0);
+const manualSpinQ = new THREE.Quaternion();
 let smoothedOmegaY = 0;
 
 let last = performance.now();
@@ -403,7 +403,12 @@ function frame(now) {
   last = now;
 
   controls.update();
-  applyManualSpin(dt);
+
+  // Compose drag/gyro orientation with the slider's absolute rotation
+  // around the disc's object-space +Y. Right-multiplying applies the
+  // slider rotation first in object space, then the base orientation.
+  manualSpinQ.setFromAxisAngle(MANUAL_SPIN_AXIS, manualSpinAngle);
+  disc.quaternion.copy(baseTarget.quaternion).multiply(manualSpinQ);
 
   // worldDown rotated by inverse(disc.quaternion) → localDown in disc frame.
   invQ.copy(disc.quaternion).invert();
