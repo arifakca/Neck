@@ -203,7 +203,9 @@ syncGravity();
 syncViscosity();
 syncBounce();
 syncSpin();
+// Order matters: set radius first so setCount's particle scatter uses it.
 syncParticleRadius();
+syncAmount();
 
 // Make the parameter panel a draggable floating window via its grip handle.
 (function makePanelDraggable() {
