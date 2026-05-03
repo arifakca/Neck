@@ -43,6 +43,54 @@ html, body {
   letter-spacing: 0.02em;
 }
 
+.panel-toggle {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e8d8a8;
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  z-index: 1;
+  touch-action: manipulation;
+}
+.panel-toggle:hover { background: rgba(255, 255, 255, 0.16); }
+.panel-toggle:active { background: rgba(232, 216, 168, 0.25); }
+
+.panel.minimized {
+  min-width: 0;
+  width: auto;
+  padding: 0;
+  background: transparent;
+  border: none;
+  overflow: visible;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  gap: 0;
+}
+.panel.minimized > *:not(.panel-toggle) { display: none; }
+.panel.minimized .panel-toggle {
+  position: static;
+  width: 44px;
+  height: 44px;
+  background: rgba(20, 20, 26, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 22px;
+  font-size: 26px;
+}
+
 .section {
   font-size: 10px;
   text-transform: uppercase;

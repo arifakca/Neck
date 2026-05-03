@@ -216,6 +216,17 @@ syncSpin();
 syncParticleRadius();
 syncAmount();
 
+// Minimize / expand the parameter panel.
+(function wirePanelToggle() {
+  const panel = $('panel');
+  const btn = $('panel-toggle');
+  btn.addEventListener('click', () => {
+    const minimized = panel.classList.toggle('minimized');
+    btn.textContent = minimized ? '+' : '−';
+    btn.setAttribute('aria-label', minimized ? 'Expand panel' : 'Minimize panel');
+  });
+})();
+
 // Make the parameter panel a draggable floating window via its grip handle.
 (function makePanelDraggable() {
   const panel = $('panel');
