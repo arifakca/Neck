@@ -219,6 +219,31 @@ syncSpin();
 syncParticleRadius();
 syncAmount();
 
+// Vertical spin throttle on the right edge. Slider value (-1..1) maps to a
+// rotation rate around the disc's current local +Y axis (the screen normal).
+// Composes on top of drag and gyro since it's applied each frame.
+const SPIN_MAX_RATE = Math.PI; // rad/s at full throttle
+let manualSpinRate = 0;
+const spinAxis = new THREE.Vector3();
+const spinDeltaQ = new THREE.Quaternion();
+(function wireSpinSlider() {
+  const slider = $('spin-slider');
+  function update() {
+    // Negative because positive slider (up after rotate(-90deg)) should
+    // read as clockwise looking down at the disc, which is -ω around +Y.
+    manualSpinRate = -parseFloat(slider.value) * SPIN_MAX_RATE;
+  }
+  slider.addEventListener('input', update);
+  update();
+})();
+
+function applyManualSpin(dt) {
+  if (!manualSpinRate) return;
+  spinAxis.set(0, 1, 0).applyQuaternion(disc.quaternion);
+  spinDeltaQ.setFromAxisAngle(spinAxis, manualSpinRate * dt);
+  disc.quaternion.premultiply(spinDeltaQ);
+}
+
 // Phone gyroscope → disc orientation. iOS 13+ requires explicit permission
 // granted from a user gesture, so we ask on the toggle's `change` event.
 (function wireGyro() {
@@ -384,6 +409,7 @@ function frame(now) {
   last = now;
 
   controls.update();
+  applyManualSpin(dt);
 
   // worldDown rotated by inverse(disc.quaternion) → localDown in disc frame.
   invQ.copy(disc.quaternion).invert();
