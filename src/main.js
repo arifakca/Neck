@@ -60,12 +60,22 @@ const controls = attachDragRotate(canvas, disc, camera, {
 function $(id) { return document.getElementById(id); }
 const resInput = $('resolution');
 const resValue = $('resolution-value');
+const footprintInput = $('footprint');
+const footprintValue = $('footprint-value');
+const dotFillInput = $('dot-fill');
+const dotFillValue = $('dot-fill-value');
 const amtInput = $('amount');
 const amtValue = $('amount-value');
+const particleRInput = $('particle-r');
+const particleRValue = $('particle-r-value');
 const liquidColorInput = $('liquid-color');
 const screenColorInput = $('screen-color');
 const glowInput = $('glow');
+const glowStrengthInput = $('glow-strength');
+const glowStrengthValue = $('glow-strength-value');
 const speedGlowInput = $('speed-glow');
+const speedRefInput = $('speed-ref');
+const speedRefValue = $('speed-ref-value');
 const gravityInput = $('gravity');
 const gravityValue = $('gravity-value');
 const viscosityInput = $('viscosity');
@@ -85,10 +95,25 @@ function syncResolution() {
   resValue.textContent = String(n);
   led.setResolution(n);
 }
+function syncFootprint() {
+  const v = parseFloat(footprintInput.value);
+  footprintValue.textContent = v.toFixed(2);
+  led.setParticleFootprint(v);
+}
+function syncDotFill() {
+  const v = parseFloat(dotFillInput.value);
+  dotFillValue.textContent = v.toFixed(2);
+  led.setDotFill(v);
+}
 function syncAmount() {
   const n = parseInt(amtInput.value, 10);
   amtValue.textContent = String(n);
   fluid.setCount(n);
+}
+function syncParticleRadius() {
+  const r = parseFloat(particleRInput.value);
+  particleRValue.textContent = r.toFixed(3);
+  fluid.setParticleRadius(r);
 }
 function syncColors() {
   led.setColors({
@@ -99,6 +124,16 @@ function syncColors() {
 function syncGlow() {
   led.setGlow(glowInput.checked);
   led.setSpeedGlow(speedGlowInput.checked);
+}
+function syncGlowStrength() {
+  const v = parseFloat(glowStrengthInput.value);
+  glowStrengthValue.textContent = v.toFixed(1);
+  led.setGlowStrength(v);
+}
+function syncSpeedRef() {
+  const v = parseFloat(speedRefInput.value);
+  speedRefValue.textContent = v.toFixed(1);
+  led.setSpeedRef(v);
 }
 function syncGravity() {
   settings.gravity = parseFloat(gravityInput.value);
@@ -121,23 +156,33 @@ function syncSpin() {
 }
 
 resInput.addEventListener('input', syncResolution);
+footprintInput.addEventListener('input', syncFootprint);
+dotFillInput.addEventListener('input', syncDotFill);
 amtInput.addEventListener('input', syncAmount);
+particleRInput.addEventListener('input', syncParticleRadius);
 liquidColorInput.addEventListener('input', syncColors);
 screenColorInput.addEventListener('input', syncColors);
 glowInput.addEventListener('change', syncGlow);
+glowStrengthInput.addEventListener('input', syncGlowStrength);
 speedGlowInput.addEventListener('change', syncGlow);
+speedRefInput.addEventListener('input', syncSpeedRef);
 gravityInput.addEventListener('input', syncGravity);
 viscosityInput.addEventListener('input', syncViscosity);
 bounceInput.addEventListener('input', syncBounce);
 spinInput.addEventListener('input', syncSpin);
 
 syncResolution();
+syncFootprint();
+syncDotFill();
 syncColors();
 syncGlow();
+syncGlowStrength();
+syncSpeedRef();
 syncGravity();
 syncViscosity();
 syncBounce();
 syncSpin();
+syncParticleRadius();
 
 // Make the parameter panel a draggable floating window via its grip handle.
 (function makePanelDraggable() {

@@ -26,6 +26,16 @@
       <input id="resolution" type="range" min="12" max="160" step="1" value="28" />
       <span id="resolution-value" class="value">28</span>
     </label>
+    <label class="row">
+      <span class="label">Particle size</span>
+      <input id="footprint" type="range" min="0.2" max="2" step="0.05" value="0.7" />
+      <span id="footprint-value" class="value">0.70</span>
+    </label>
+    <label class="row">
+      <span class="label">Dot fill</span>
+      <input id="dot-fill" type="range" min="0.3" max="1" step="0.02" value="0.62" />
+      <span id="dot-fill-value" class="value">0.62</span>
+    </label>
     <label class="row row-color">
       <span class="label">Liquid color</span>
       <input id="liquid-color" type="color" value="#e8d8a8" />
@@ -38,9 +48,19 @@
       <span class="label">Glow</span>
       <input id="glow" type="checkbox" />
     </label>
+    <label class="row">
+      <span class="label">Glow strength</span>
+      <input id="glow-strength" type="range" min="0.2" max="2.5" step="0.1" value="1" />
+      <span id="glow-strength-value" class="value">1.0</span>
+    </label>
     <label class="row row-toggle">
       <span class="label">Speed glow</span>
       <input id="speed-glow" type="checkbox" />
+    </label>
+    <label class="row">
+      <span class="label">Speed range</span>
+      <input id="speed-ref" type="range" min="0.5" max="10" step="0.5" value="3" />
+      <span id="speed-ref-value" class="value">3.0</span>
     </label>
 
     <div class="section">Physics</div>
@@ -48,6 +68,11 @@
       <span class="label">Liquid</span>
       <input id="amount" type="range" min="100" max="1000" step="50" value="600" />
       <span id="amount-value" class="value">600</span>
+    </label>
+    <label class="row">
+      <span class="label">Particle r</span>
+      <input id="particle-r" type="range" min="0.018" max="0.05" step="0.002" value="0.032" />
+      <span id="particle-r-value" class="value">0.032</span>
     </label>
     <label class="row">
       <span class="label">Gravity</span>

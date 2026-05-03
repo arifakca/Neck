@@ -39,6 +39,8 @@ export class LedScreen {
     this.particleFootprint = 0.7;
     this.glow = false;
     this.speedGlow = false;
+    // Multiplier on the bloom blur radius (1 = current cellPx * 0.7).
+    this.glowStrength = 1.0;
     // Speed (length of fluid velocity) that maps to full brightness when
     // speedGlow is on. Anything below renders dimmer.
     this.speedRef = 3.0;
@@ -46,6 +48,10 @@ export class LedScreen {
 
   setGlow(enabled) { this.glow = !!enabled; }
   setSpeedGlow(enabled) { this.speedGlow = !!enabled; }
+  setParticleFootprint(v) { this.particleFootprint = Math.max(0.05, v); }
+  setDotFill(v) { this.dotFill = Math.max(0.05, Math.min(1, v)); }
+  setGlowStrength(v) { this.glowStrength = Math.max(0, v); }
+  setSpeedRef(v) { this.speedRef = Math.max(0.05, v); }
 
   setResolution(n) {
     this.resolution = Math.max(4, Math.min(160, n | 0));
@@ -140,7 +146,7 @@ export class LedScreen {
     // underneath, cheap because it's a single drawImage with a CSS filter.
     if (this.glow) {
       ctx.save();
-      ctx.filter = `blur(${cellPx * 0.7}px)`;
+      ctx.filter = `blur(${cellPx * 0.7 * this.glowStrength}px)`;
       ctx.globalCompositeOperation = 'lighter';
       ctx.drawImage(this.dotsCanvas, 0, 0);
       ctx.restore();

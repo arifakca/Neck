@@ -77,6 +77,13 @@ export class Fluid {
     this.restitution = r;
   }
 
+  setParticleRadius(r) {
+    if (r < 0.005) r = 0.005;
+    else if (r > 0.1) r = 0.1;
+    this.radius = r;
+    this._rebuildGrid();
+  }
+
   setCount(n) {
     if (n === this.count) return;
     this._allocate(n);
