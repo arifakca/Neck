@@ -33,6 +33,11 @@ export class LedScreen {
     this.resolution = Math.max(4, Math.min(160, n | 0));
   }
 
+  setColors({ liquid, background } = {}) {
+    if (liquid) this.dotColor = liquid;
+    if (background) this.bgColor = background;
+  }
+
   render(fluid) {
     const ctx = this.ctx;
     const size = this.size;

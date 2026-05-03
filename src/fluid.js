@@ -6,10 +6,10 @@ export class Fluid {
     this.radius = radius;
     this.gx = 0;
     this.gy = 0;
-    this.damping = 0.985;
-    this.restitution = 0.3;
+    this.damping = 0.992;
+    this.restitution = 0.55;
     this.subSteps = 2;
-    this.relaxIters = 4;
+    this.relaxIters = 3;
     this._allocate(count);
     this._scatter();
   }

@@ -61,6 +61,8 @@ const resInput = document.getElementById('resolution');
 const resValue = document.getElementById('resolution-value');
 const amtInput = document.getElementById('amount');
 const amtValue = document.getElementById('amount-value');
+const liquidColorInput = document.getElementById('liquid-color');
+const screenColorInput = document.getElementById('screen-color');
 
 function syncResolution() {
   const n = parseInt(resInput.value, 10);
@@ -72,9 +74,18 @@ function syncAmount() {
   amtValue.textContent = String(n);
   fluid.setCount(n);
 }
+function syncColors() {
+  led.setColors({
+    liquid: liquidColorInput.value,
+    background: screenColorInput.value,
+  });
+}
 resInput.addEventListener('input', syncResolution);
 amtInput.addEventListener('input', syncAmount);
+liquidColorInput.addEventListener('input', syncColors);
+screenColorInput.addEventListener('input', syncColors);
 syncResolution();
+syncColors();
 
 // Resize handling.
 function onResize() {
@@ -88,7 +99,7 @@ window.addEventListener('resize', onResize);
 onResize();
 
 // Per-frame: derive 2D gravity from disc orientation, step sim, redraw.
-const G = 4.0;
+const G = 8.0;
 const worldDown = new THREE.Vector3(0, -1, 0);
 const localDown = new THREE.Vector3();
 const invQ = new THREE.Quaternion();

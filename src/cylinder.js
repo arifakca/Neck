@@ -39,22 +39,5 @@ export function buildDisc({ ledTexture, radius = 1.0, height = 0.18 } = {}) {
   bottomScreen.position.y = -height / 2 - 0.0008;
   group.add(bottomScreen);
 
-  // Hanging loop: small torus + bail above the rim, decorative only.
-  const loopMat = goldMat.clone();
-  const bail = new THREE.Mesh(
-    new THREE.TorusGeometry(radius * 0.09, radius * 0.022, 16, 32),
-    loopMat,
-  );
-  bail.position.set(0, radius * 1.12, 0);
-  bail.rotation.x = Math.PI / 2;
-  group.add(bail);
-
-  const bailBase = new THREE.Mesh(
-    new THREE.CylinderGeometry(radius * 0.07, radius * 0.09, radius * 0.07, 24),
-    loopMat,
-  );
-  bailBase.position.set(0, radius * 1.02, 0);
-  group.add(bailBase);
-
   return group;
 }
