@@ -51,9 +51,11 @@ const disc = buildDisc({ ledTexture: led.texture, radius: 1.0, height: 0.18 });
 disc.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0.35);
 scene.add(disc);
 
+let gyroEnabled = false;
 const controls = attachDragRotate(canvas, disc, camera, {
   sensitivity: 0.008,
   inertiaDecay: 0.94,
+  isEnabled: () => !gyroEnabled,
 });
 
 // UI wiring.
@@ -215,6 +217,63 @@ syncSpin();
 // Order matters: set radius first so setCount's particle scatter uses it.
 syncParticleRadius();
 syncAmount();
+
+// Phone gyroscope → disc orientation. iOS 13+ requires explicit permission
+// granted from a user gesture, so we ask on the toggle's `change` event.
+(function wireGyro() {
+  const gyroInput = $('gyro');
+  const deg2rad = Math.PI / 180;
+  const gyroEuler = new THREE.Euler();
+  const gyroTarget = new THREE.Quaternion();
+  let listening = false;
+
+  function onOrientation(e) {
+    if (!gyroEnabled) return;
+    if (e.beta == null && e.gamma == null) return;
+    const beta = (e.beta || 0) * deg2rad;   // pitch (front-back tilt)
+    const gamma = (e.gamma || 0) * deg2rad; // roll (left-right tilt)
+    // Map: tilting top of phone away from user → disc top tilts away.
+    // Tilting right edge of phone down → disc right edge tilts down.
+    gyroEuler.set(beta, 0, -gamma, 'XYZ');
+    gyroTarget.setFromEuler(gyroEuler);
+    // Soft slerp to smooth out gyro noise.
+    disc.quaternion.slerp(gyroTarget, 0.18);
+  }
+
+  function attach() {
+    if (listening) return;
+    window.addEventListener('deviceorientation', onOrientation);
+    listening = true;
+  }
+
+  async function enable() {
+    const E = window.DeviceOrientationEvent;
+    if (E && typeof E.requestPermission === 'function') {
+      try {
+        const result = await E.requestPermission();
+        if (result !== 'granted') {
+          gyroInput.checked = false;
+          gyroEnabled = false;
+          return;
+        }
+      } catch {
+        gyroInput.checked = false;
+        gyroEnabled = false;
+        return;
+      }
+    } else if (typeof window.DeviceOrientationEvent === 'undefined') {
+      gyroInput.checked = false;
+      return;
+    }
+    attach();
+    gyroEnabled = true;
+  }
+
+  gyroInput.addEventListener('change', () => {
+    if (gyroInput.checked) enable();
+    else gyroEnabled = false;
+  });
+})();
 
 // Minimize / expand the parameter panel.
 (function wirePanelToggle() {

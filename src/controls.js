@@ -6,6 +6,7 @@ import * as THREE from 'three';
 export function attachDragRotate(domElement, target, camera, {
   sensitivity = 0.008,
   inertiaDecay = 0.94,
+  isEnabled = () => true,
 } = {}) {
   let dragging = false;
   let pointerId = null;
@@ -21,6 +22,7 @@ export function attachDragRotate(domElement, target, camera, {
   const tmpQ = new THREE.Quaternion();
 
   function applyRotation(dx, dy) {
+    if (!isEnabled()) return;
     // World-space rotation: yaw around world +Y from horizontal drag,
     // pitch around camera-right axis from vertical drag.
     camera.matrixWorld.extractBasis(tmpRight, tmpScratch1, tmpScratch2);
