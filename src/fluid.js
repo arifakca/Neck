@@ -65,6 +65,18 @@ export class Fluid {
     this.omega = omega;
   }
 
+  setDamping(d) {
+    if (d < 0) d = 0;
+    else if (d > 1) d = 1;
+    this.damping = d;
+  }
+
+  setRestitution(r) {
+    if (r < 0) r = 0;
+    else if (r > 1) r = 1;
+    this.restitution = r;
+  }
+
   setCount(n) {
     if (n === this.count) return;
     this._allocate(n);

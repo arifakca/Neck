@@ -27,7 +27,15 @@ export class LedScreen {
     // the particle's physical radius. >1 fuses neighboring particles into a
     // continuous liquid surface at high LED resolutions.
     this.particleFootprint = 1.4;
+    this.glow = false;
+    this.speedGlow = false;
+    // Speed (length of fluid velocity) that maps to full brightness when
+    // speedGlow is on. Anything below renders dimmer.
+    this.speedRef = 3.0;
   }
+
+  setGlow(enabled) { this.glow = !!enabled; }
+  setSpeedGlow(enabled) { this.speedGlow = !!enabled; }
 
   setResolution(n) {
     this.resolution = Math.max(4, Math.min(160, n | 0));
@@ -47,17 +55,24 @@ export class LedScreen {
     ctx.fillRect(0, 0, size, size);
 
     // For each particle, mark the LED cells whose center sits within its
-    // (slightly inflated) radius. Indices: i = column along fluid.x,
-    // j = row along fluid.y, with j increasing with fluid.y.
+    // (slightly inflated) radius. When speedGlow is on, each cell also tracks
+    // the max particle speed seen, used later as the cell's brightness.
+    // Indices: i = column along fluid.x, j = row along fluid.y.
     const cells = new Uint8Array(N * N);
+    const cellSpeed = this.speedGlow ? new Float32Array(N * N) : null;
     const px = fluid.x;
     const py = fluid.y;
+    const vx = fluid.vx;
+    const vy = fluid.vy;
     const count = fluid.count;
     const rCells = (fluid.radius * this.particleFootprint) * 0.5 * N;
     const rCellsSq = rCells * rCells;
     for (let p = 0; p < count; p++) {
       const fx = (px[p] + 1) * 0.5 * N;
       const fy = (py[p] + 1) * 0.5 * N;
+      const speed = cellSpeed
+        ? Math.sqrt(vx[p] * vx[p] + vy[p] * vy[p])
+        : 0;
       const i0 = Math.max(0, Math.floor(fx - rCells));
       const i1 = Math.min(N - 1, Math.floor(fx + rCells));
       const j0 = Math.max(0, Math.floor(fy - rCells));
@@ -68,7 +83,12 @@ export class LedScreen {
         const row = jj * N;
         for (let ii = i0; ii <= i1; ii++) {
           const dx = (ii + 0.5) - fx;
-          if (dx * dx + dySq <= rCellsSq) cells[row + ii] = 1;
+          if (dx * dx + dySq <= rCellsSq) {
+            cells[row + ii] = 1;
+            if (cellSpeed && speed > cellSpeed[row + ii]) {
+              cellSpeed[row + ii] = speed;
+            }
+          }
         }
       }
     }
@@ -80,6 +100,17 @@ export class LedScreen {
     const rMaskSq = 0.985 * 0.985;
 
     ctx.fillStyle = this.dotColor;
+    if (this.glow) {
+      ctx.shadowColor = this.dotColor;
+      ctx.shadowBlur = cellPx * 0.85;
+    } else {
+      ctx.shadowBlur = 0;
+    }
+
+    const useSpeed = !!cellSpeed;
+    const invSpeedRef = 1 / Math.max(0.001, this.speedRef);
+    const minBrightness = 0.22;
+
     for (let j = 0; j < N; j++) {
       const ny = ((j + 0.5) / N) * 2 - 1;
       const dySq = ny * ny;
@@ -88,10 +119,17 @@ export class LedScreen {
       for (let i = 0; i < N; i++) {
         const nx = ((i + 0.5) / N) * 2 - 1;
         if (nx * nx + dySq > rMaskSq) continue;
-        if (!cells[j * N + i]) continue;
+        const idx = j * N + i;
+        if (!cells[idx]) continue;
+        if (useSpeed) {
+          const t = Math.min(1, cellSpeed[idx] * invSpeedRef);
+          ctx.globalAlpha = minBrightness + (1 - minBrightness) * t;
+        }
         ctx.fillRect(i * cellPx + dotOffset, cellTopY + dotOffset, dotSize, dotSize);
       }
     }
+    if (useSpeed) ctx.globalAlpha = 1;
+    if (this.glow) ctx.shadowBlur = 0;
 
     this.texture.needsUpdate = true;
   }

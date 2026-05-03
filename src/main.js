@@ -57,12 +57,28 @@ const controls = attachDragRotate(canvas, disc, camera, {
 });
 
 // UI wiring.
-const resInput = document.getElementById('resolution');
-const resValue = document.getElementById('resolution-value');
-const amtInput = document.getElementById('amount');
-const amtValue = document.getElementById('amount-value');
-const liquidColorInput = document.getElementById('liquid-color');
-const screenColorInput = document.getElementById('screen-color');
+function $(id) { return document.getElementById(id); }
+const resInput = $('resolution');
+const resValue = $('resolution-value');
+const amtInput = $('amount');
+const amtValue = $('amount-value');
+const liquidColorInput = $('liquid-color');
+const screenColorInput = $('screen-color');
+const glowInput = $('glow');
+const speedGlowInput = $('speed-glow');
+const gravityInput = $('gravity');
+const gravityValue = $('gravity-value');
+const viscosityInput = $('viscosity');
+const viscosityValue = $('viscosity-value');
+const bounceInput = $('bounce');
+const bounceValue = $('bounce-value');
+const spinInput = $('spin');
+const spinValue = $('spin-value');
+
+const settings = {
+  gravity: parseFloat(gravityInput.value),
+  spinScale: parseFloat(spinInput.value),
+};
 
 function syncResolution() {
   const n = parseInt(resInput.value, 10);
@@ -80,12 +96,48 @@ function syncColors() {
     background: screenColorInput.value,
   });
 }
+function syncGlow() {
+  led.setGlow(glowInput.checked);
+  led.setSpeedGlow(speedGlowInput.checked);
+}
+function syncGravity() {
+  settings.gravity = parseFloat(gravityInput.value);
+  gravityValue.textContent = settings.gravity.toFixed(1);
+}
+function syncViscosity() {
+  // viscosity 0..1 → damping 1.0..0.94. 0 = ideal fluid, 1 = thick.
+  const v = parseFloat(viscosityInput.value);
+  viscosityValue.textContent = v.toFixed(2);
+  fluid.setDamping(1 - v * 0.06);
+}
+function syncBounce() {
+  const r = parseFloat(bounceInput.value);
+  bounceValue.textContent = r.toFixed(2);
+  fluid.setRestitution(r);
+}
+function syncSpin() {
+  settings.spinScale = parseFloat(spinInput.value);
+  spinValue.textContent = settings.spinScale.toFixed(2);
+}
+
 resInput.addEventListener('input', syncResolution);
 amtInput.addEventListener('input', syncAmount);
 liquidColorInput.addEventListener('input', syncColors);
 screenColorInput.addEventListener('input', syncColors);
+glowInput.addEventListener('change', syncGlow);
+speedGlowInput.addEventListener('change', syncGlow);
+gravityInput.addEventListener('input', syncGravity);
+viscosityInput.addEventListener('input', syncViscosity);
+bounceInput.addEventListener('input', syncBounce);
+spinInput.addEventListener('input', syncSpin);
+
 syncResolution();
 syncColors();
+syncGlow();
+syncGravity();
+syncViscosity();
+syncBounce();
+syncSpin();
 
 // Resize handling.
 function onResize() {
@@ -99,7 +151,6 @@ window.addEventListener('resize', onResize);
 onResize();
 
 // Per-frame: derive 2D gravity + spin from disc orientation, step sim, redraw.
-const G = 8.0;
 const worldDown = new THREE.Vector3(0, -1, 0);
 const localDown = new THREE.Vector3();
 const invQ = new THREE.Quaternion();
@@ -126,7 +177,7 @@ function frame(now) {
   // Disc top face is the local XZ plane. Map to fluid coords:
   //   fluid.x  ←  local +X
   //   fluid.y  ←  local -Z   (see cylinder.js for the uv axis derivation)
-  fluid.setGravity(localDown.x * G, -localDown.z * G);
+  fluid.setGravity(localDown.x * settings.gravity, -localDown.z * settings.gravity);
 
   // Angular velocity around the screen normal (disc local +Y).
   prevInv.copy(prevQuat).invert();
@@ -137,7 +188,7 @@ function frame(now) {
     // The fluid 2D frame's "z" axis = disc local +Y, so the in-plane spin
     // rate is omegaLocal.y. Smooth a bit to avoid frame-to-frame jitter.
     smoothedOmegaY = smoothedOmegaY * 0.6 + omegaLocal.y * 0.4;
-    fluid.setSpin(smoothedOmegaY);
+    fluid.setSpin(smoothedOmegaY * settings.spinScale);
   }
   prevQuat.copy(disc.quaternion);
 
