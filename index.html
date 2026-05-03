@@ -17,8 +17,9 @@
   <canvas id="scene"></canvas>
 
   <div class="panel" id="panel">
-    <div class="drag-pad" id="panel-drag"><div class="drag-grip"></div></div>
     <button class="panel-toggle" id="panel-toggle" aria-label="Minimize panel" type="button">−</button>
+    <div class="panel-body">
+    <div class="drag-pad" id="panel-drag"><div class="drag-grip"></div></div>
     <div class="hint">Drag the disc to rotate</div>
 
     <div class="section">Display</div>
@@ -113,6 +114,7 @@
       <input id="spin" type="range" min="0" max="2" step="0.05" value="0.4" />
       <span id="spin-value" class="value">0.40</span>
     </label>
+    </div>
   </div>
 
   <script type="module" src="./src/main.js"></script>
