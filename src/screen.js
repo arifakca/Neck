@@ -33,9 +33,10 @@ export class LedScreen {
     this.dotColor = '#e8d8a8';
     this.dotFill = 0.62; // fraction of cell occupied by the lit square
     // Each particle lights cells whose center sits within this multiple of
-    // the particle's physical radius. >1 fuses neighboring particles into a
-    // continuous liquid surface at high LED resolutions.
-    this.particleFootprint = 1.4;
+    // the particle's physical radius. ~0.7 gives roughly one-to-two LED
+    // cells per particle so individuals are visible instead of merging into
+    // big clusters.
+    this.particleFootprint = 0.7;
     this.glow = false;
     this.speedGlow = false;
     // Speed (length of fluid velocity) that maps to full brightness when
