@@ -139,6 +139,72 @@ syncViscosity();
 syncBounce();
 syncSpin();
 
+// Make the parameter panel a draggable floating window via its grip handle.
+(function makePanelDraggable() {
+  const panel = $('panel');
+  const grip = $('panel-drag');
+  let dragging = false;
+  let startX = 0;
+  let startY = 0;
+  let startLeft = 0;
+  let startTop = 0;
+  let detached = false;
+
+  function detachFromInitialPosition() {
+    if (detached) return;
+    const rect = panel.getBoundingClientRect();
+    panel.style.transform = 'none';
+    panel.style.bottom = 'auto';
+    panel.style.left = `${rect.left}px`;
+    panel.style.top = `${rect.top}px`;
+    detached = true;
+  }
+
+  function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+  grip.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    detachFromInitialPosition();
+    startX = e.clientX;
+    startY = e.clientY;
+    const rect = panel.getBoundingClientRect();
+    startLeft = rect.left;
+    startTop = rect.top;
+    grip.setPointerCapture(e.pointerId);
+    panel.classList.add('dragging');
+    e.preventDefault();
+  });
+
+  grip.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    const maxLeft = window.innerWidth - panel.offsetWidth;
+    const maxTop = window.innerHeight - panel.offsetHeight;
+    panel.style.left = `${clamp(startLeft + dx, 0, maxLeft)}px`;
+    panel.style.top = `${clamp(startTop + dy, 0, maxTop)}px`;
+  });
+
+  function endDrag(e) {
+    if (!dragging) return;
+    dragging = false;
+    grip.releasePointerCapture?.(e.pointerId);
+    panel.classList.remove('dragging');
+  }
+  grip.addEventListener('pointerup', endDrag);
+  grip.addEventListener('pointercancel', endDrag);
+
+  // Keep the panel inside the viewport when the window resizes.
+  window.addEventListener('resize', () => {
+    if (!detached) return;
+    const rect = panel.getBoundingClientRect();
+    const maxLeft = window.innerWidth - panel.offsetWidth;
+    const maxTop = window.innerHeight - panel.offsetHeight;
+    panel.style.left = `${clamp(rect.left, 0, maxLeft)}px`;
+    panel.style.top = `${clamp(rect.top, 0, maxTop)}px`;
+  });
+})();
+
 // Resize handling.
 function onResize() {
   const w = window.innerWidth;

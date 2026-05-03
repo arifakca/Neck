@@ -59,6 +59,26 @@ html, body {
   margin-bottom: 2px;
 }
 
+.drag-pad {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 6px 0 4px;
+  margin: -4px -16px 2px;
+  cursor: grab;
+  touch-action: none;
+}
+.drag-pad:active { cursor: grabbing; }
+.drag-grip {
+  width: 44px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.28);
+}
+.panel.dragging .drag-grip {
+  background: rgba(232, 216, 168, 0.7);
+}
+
 .row {
   display: grid;
   grid-template-columns: 80px 1fr 40px;

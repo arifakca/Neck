@@ -13,6 +13,15 @@ export class LedScreen {
     this.canvas.height = size;
     this.ctx = this.canvas.getContext('2d');
 
+    // Offscreen canvas where dots are drawn first, then composited onto the
+    // main canvas (sharp on top, optionally blurred underneath for glow).
+    // This keeps glow to ONE blur pass instead of per-rect shadowBlur, which
+    // is orders of magnitude faster.
+    this.dotsCanvas = document.createElement('canvas');
+    this.dotsCanvas.width = size;
+    this.dotsCanvas.height = size;
+    this.dotsCtx = this.dotsCanvas.getContext('2d');
+
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.minFilter = THREE.NearestFilter;
     this.texture.magFilter = THREE.NearestFilter;
@@ -48,11 +57,13 @@ export class LedScreen {
 
   render(fluid) {
     const ctx = this.ctx;
+    const dotsCtx = this.dotsCtx;
     const size = this.size;
     const N = this.resolution;
 
     ctx.fillStyle = this.bgColor;
     ctx.fillRect(0, 0, size, size);
+    dotsCtx.clearRect(0, 0, size, size);
 
     // For each particle, mark the LED cells whose center sits within its
     // (slightly inflated) radius. When speedGlow is on, each cell also tracks
@@ -99,22 +110,16 @@ export class LedScreen {
     // Mask: keep cells whose center is inside the unit circle.
     const rMaskSq = 0.985 * 0.985;
 
-    ctx.fillStyle = this.dotColor;
-    if (this.glow) {
-      ctx.shadowColor = this.dotColor;
-      ctx.shadowBlur = cellPx * 0.85;
-    } else {
-      ctx.shadowBlur = 0;
-    }
-
     const useSpeed = !!cellSpeed;
     const invSpeedRef = 1 / Math.max(0.001, this.speedRef);
     const minBrightness = 0.22;
 
+    // Pass 1: draw all dots into the offscreen layer at their (possibly
+    // speed-modulated) brightness. No glow yet.
+    dotsCtx.fillStyle = this.dotColor;
     for (let j = 0; j < N; j++) {
       const ny = ((j + 0.5) / N) * 2 - 1;
       const dySq = ny * ny;
-      // Flip so fluid +y → top of canvas.
       const cellTopY = (N - 1 - j) * cellPx;
       for (let i = 0; i < N; i++) {
         const nx = ((i + 0.5) / N) * 2 - 1;
@@ -123,13 +128,25 @@ export class LedScreen {
         if (!cells[idx]) continue;
         if (useSpeed) {
           const t = Math.min(1, cellSpeed[idx] * invSpeedRef);
-          ctx.globalAlpha = minBrightness + (1 - minBrightness) * t;
+          dotsCtx.globalAlpha = minBrightness + (1 - minBrightness) * t;
         }
-        ctx.fillRect(i * cellPx + dotOffset, cellTopY + dotOffset, dotSize, dotSize);
+        dotsCtx.fillRect(i * cellPx + dotOffset, cellTopY + dotOffset, dotSize, dotSize);
       }
     }
-    if (useSpeed) ctx.globalAlpha = 1;
-    if (this.glow) ctx.shadowBlur = 0;
+    if (useSpeed) dotsCtx.globalAlpha = 1;
+
+    // Pass 2: optional bloom — one blurred additive copy of the dots layer
+    // underneath, cheap because it's a single drawImage with a CSS filter.
+    if (this.glow) {
+      ctx.save();
+      ctx.filter = `blur(${cellPx * 0.7}px)`;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.drawImage(this.dotsCanvas, 0, 0);
+      ctx.restore();
+    }
+
+    // Pass 3: sharp dots on top.
+    ctx.drawImage(this.dotsCanvas, 0, 0);
 
     this.texture.needsUpdate = true;
   }
